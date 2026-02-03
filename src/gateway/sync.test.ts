@@ -116,5 +116,28 @@ describe('syncToR2', () => {
       expect(rsyncCall).toContain('/root/.clawdbot/');
       expect(rsyncCall).toContain('/data/moltbot/');
     });
+
+    // CRITICAL: This test ensures we never accidentally remove workspace backup
+    it('CRITICAL: verifies workspace (bot memory) is included in backup', async () => {
+      const { sandbox, startProcessMock } = createMockSandbox();
+      const timestamp = '2026-01-27T12:00:00+00:00';
+      
+      startProcessMock
+        .mockResolvedValueOnce(createMockProcess('s3fs on /data/moltbot type fuse.s3fs\n'))
+        .mockResolvedValueOnce(createMockProcess('ok'))
+        .mockResolvedValueOnce(createMockProcess(''))
+        .mockResolvedValueOnce(createMockProcess(timestamp));
+      
+      const env = createMockEnvWithR2();
+
+      await syncToR2(sandbox, env);
+
+      const rsyncCall = startProcessMock.mock.calls[2][0];
+      // The workspace (/root/clawd/) MUST be backed up to R2
+      // This contains IDENTITY.md, USER.md, memory/, and all bot context
+      // DO NOT REMOVE THIS - it's the bot's memory!
+      expect(rsyncCall).toContain('/root/clawd/');
+      expect(rsyncCall).toContain('/data/moltbot/workspace/');
+    });
   });
 });

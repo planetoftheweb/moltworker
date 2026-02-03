@@ -435,4 +435,71 @@ debug.get('/container-config', async (c) => {
   }
 });
 
+// GET /debug/backup-health - Verify R2 backup has critical data (config + workspace)
+// Use this to ensure the bot's memory will persist across restarts
+debug.get('/backup-health', async (c) => {
+  const sandbox = c.get('sandbox');
+  try {
+    const proc = await sandbox.startProcess(`
+      echo "=== BACKUP HEALTH CHECK ===" &&
+      echo "" &&
+      echo "1. R2 Mount Status:" &&
+      if mount | grep -q "s3fs on /data/moltbot"; then
+        echo "   OK: R2 is mounted"
+      else
+        echo "   FAIL: R2 is NOT mounted"
+      fi &&
+      echo "" &&
+      echo "2. Config Backup:" &&
+      if [ -f "/data/moltbot/clawdbot/clawdbot.json" ]; then
+        echo "   OK: clawdbot.json exists in R2"
+      else
+        echo "   FAIL: clawdbot.json missing from R2"
+      fi &&
+      echo "" &&
+      echo "3. Workspace Backup (BOT MEMORY):" &&
+      if [ -d "/data/moltbot/workspace" ]; then
+        WORKSPACE_FILES=$(find /data/moltbot/workspace -type f 2>/dev/null | wc -l)
+        echo "   OK: workspace dir exists ($WORKSPACE_FILES files)"
+        if [ -f "/data/moltbot/workspace/IDENTITY.md" ]; then
+          echo "   OK: IDENTITY.md backed up"
+        else
+          echo "   WARN: IDENTITY.md not found (bot may not have created it yet)"
+        fi
+      else
+        echo "   FAIL: workspace dir missing from R2"
+      fi &&
+      echo "" &&
+      echo "4. Last Sync:" &&
+      if [ -f "/data/moltbot/.last-sync" ]; then
+        SYNC_TIME=$(cat /data/moltbot/.last-sync)
+        echo "   OK: Last sync at $SYNC_TIME"
+      else
+        echo "   WARN: No sync timestamp found"
+      fi &&
+      echo "" &&
+      echo "==========================="
+    `);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    const logs = await proc.getLogs();
+    
+    const output = logs.stdout || '';
+    const hasMount = output.includes('R2 is mounted');
+    const hasConfig = output.includes('clawdbot.json exists');
+    const hasWorkspace = output.includes('workspace dir exists');
+    
+    return c.json({
+      healthy: hasMount && hasConfig && hasWorkspace,
+      mount_ok: hasMount,
+      config_ok: hasConfig,
+      workspace_ok: hasWorkspace,
+      output,
+      stderr: logs.stderr || '',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: errorMessage, healthy: false }, 500);
+  }
+});
+
 export { debug };

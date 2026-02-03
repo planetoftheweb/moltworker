@@ -27,7 +27,7 @@ RUN mkdir -p /root/.clawdbot \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script - force rebuild
-ARG CACHE_BUST=2026-02-02-twitter-v4
+ARG CACHE_BUST=2026-02-03-workspace-backup-v16
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh
 

@@ -244,3 +244,33 @@ R2 is mounted via s3fs at `/data/moltbot`. Important gotchas:
 - **Never delete R2 data**: The mount directory `/data/moltbot` IS the R2 bucket. Running `rm -rf /data/moltbot/*` will DELETE your backup data. Always check mount status before any destructive operations.
 
 - **Process status**: The sandbox API's `proc.status` may not update immediately after a process completes. Instead of checking `proc.status === 'completed'`, verify success by checking for expected output (e.g., timestamp file exists after sync).
+
+### CRITICAL: R2 Backup Structure
+
+The R2 backup contains THREE directories that MUST ALL be backed up and restored:
+
+| R2 Path | Container Path | Contents | CRITICAL? |
+|---------|---------------|----------|-----------|
+| `/data/moltbot/clawdbot/` | `/root/.clawdbot/` | Config, devices, credentials | Yes |
+| `/data/moltbot/workspace/` | `/root/clawd/` | **BOT MEMORY** - IDENTITY.md, USER.md, memory/, conversations | **CRITICAL** |
+| `/data/moltbot/skills/` | `/root/clawd/skills/` | Custom skills | Yes |
+
+**WARNING: DO NOT remove the workspace backup from `src/gateway/sync.ts` or `start-moltbot.sh`!**
+
+The workspace directory contains the bot's personality, memory, and conversation history. Without it, the bot loses all context on container restart. This has caused data loss multiple times.
+
+There is a test in `src/gateway/sync.test.ts` that verifies workspace is included in backup. This test MUST pass before deploying.
+
+### Verifying Backup Health
+
+Use the debug endpoint to verify backups are working:
+
+```
+GET /debug/backup-health
+```
+
+This checks:
+1. R2 is mounted
+2. Config backup exists
+3. Workspace backup exists (bot memory)
+4. Last sync timestamp

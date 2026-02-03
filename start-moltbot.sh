@@ -45,6 +45,24 @@ mkdir -p "$CONFIG_DIR"
 # The BACKUP_DIR may exist but be empty if R2 was just mounted
 # Note: backup structure is $BACKUP_DIR/clawdbot/ and $BACKUP_DIR/skills/
 
+# Wait for R2 mount to be ready (s3fs can take a moment)
+echo "Waiting for R2 mount..."
+for i in 1 2 3 4 5; do
+    if mount | grep -q "s3fs on $BACKUP_DIR"; then
+        echo "R2 mounted successfully"
+        ls -la "$BACKUP_DIR/" 2>/dev/null || true
+        break
+    fi
+    echo "R2 not mounted yet, waiting... ($i/5)"
+    sleep 2
+done
+
+# Debug: show what's in backup dir
+echo "=== R2 Backup Contents ==="
+ls -la "$BACKUP_DIR/" 2>/dev/null || echo "Cannot list backup dir"
+ls -la "$BACKUP_DIR/clawdbot/" 2>/dev/null || echo "Cannot list clawdbot dir"
+echo "=========================="
+
 # Helper function to check if R2 backup is newer than local
 should_restore_from_r2() {
     local R2_SYNC_FILE="$BACKUP_DIR/.last-sync"
@@ -115,6 +133,29 @@ if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ];
     fi
 fi
 
+# ============================================================
+# RESTORE WORKSPACE FROM R2 (CRITICAL: Bot memory lives here!)
+# ============================================================
+# The workspace (/root/clawd/) contains:
+# - IDENTITY.md, USER.md (bot personality)
+# - memory/ directory (conversation history)
+# - Any files the bot creates during conversations
+WORKSPACE_DIR="/root/clawd"
+if [ -d "$BACKUP_DIR/workspace" ] && [ "$(ls -A $BACKUP_DIR/workspace 2>/dev/null)" ]; then
+    echo "=== RESTORING WORKSPACE (BOT MEMORY) ==="
+    echo "Found workspace backup at $BACKUP_DIR/workspace"
+    ls -la "$BACKUP_DIR/workspace/" 2>/dev/null || true
+    mkdir -p "$WORKSPACE_DIR"
+    # Use rsync to merge, don't delete local files that might be newer
+    rsync -a --no-times "$BACKUP_DIR/workspace/" "$WORKSPACE_DIR/"
+    echo "Restored workspace from R2 backup"
+    echo "Local workspace now contains:"
+    ls -la "$WORKSPACE_DIR/" 2>/dev/null || true
+    echo "========================================"
+else
+    echo "No workspace backup found in R2 - bot will start with fresh memory"
+fi
+
 # If config file still doesn't exist, create from template
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "No existing config found, initializing from template..."
@@ -180,7 +221,29 @@ if (config.channels?.telegram?.dm !== undefined) {
     delete config.channels.telegram.dm;
 }
 
+// Clean up broken provider configs from R2 backup (invalid api types caused crashes)
+if (config.models?.providers?.openrouter) {
+    console.log('Removing broken openrouter provider from R2 backup');
+    delete config.models.providers.openrouter;
+}
+if (config.models?.providers?.google) {
+    console.log('Removing broken google provider from R2 backup');
+    delete config.models.providers.google;
+}
+if (config.models?.providers?.openai?.api === 'openai-chat') {
+    console.log('Removing openai provider with invalid api type');
+    delete config.models.providers.openai;
+}
 
+// Clean up model aliases for removed providers
+if (config.agents?.defaults?.models) {
+    Object.keys(config.agents.defaults.models).forEach(k => {
+        if (k.startsWith('openrouter/') || k.startsWith('google/')) {
+            console.log('Removing model alias:', k);
+            delete config.agents.defaults.models[k];
+        }
+    });
+}
 
 // Gateway configuration
 config.gateway.port = 18789;

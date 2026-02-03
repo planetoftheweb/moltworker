@@ -59,6 +59,7 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
   if (env.TWITTER_AUTH_TOKEN) envVars.TWITTER_AUTH_TOKEN = env.TWITTER_AUTH_TOKEN;
   if (env.TWITTER_CT0) envVars.TWITTER_CT0 = env.TWITTER_CT0;
+  if (env.OPENROUTER_API_KEY) envVars.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
 
   return envVars;
 }

@@ -44,6 +44,8 @@ export interface MoltbotEnv {
   // Twitter authentication tokens
   TWITTER_AUTH_TOKEN?: string;
   TWITTER_CT0?: string;
+  // OpenRouter API key for accessing multiple models
+  OPENROUTER_API_KEY?: string;
 }
 
 /**
