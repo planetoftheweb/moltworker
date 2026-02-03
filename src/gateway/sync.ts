@@ -9,11 +9,12 @@ export interface SyncResult {
   lastSync?: string;
   error?: string;
   details?: string;
-  gistUrl?: string;
+  repoUrl?: string;
 }
 
-// Gist ID is stored in the container to track the backup gist
-const GIST_ID_FILE = '/root/.clawdbot/.backup-gist-id';
+// GitHub repo for secondary backup
+const GITHUB_BACKUP_REPO = 'planetoftheweb/moltbot-memory-backup';
+const BACKUP_REPO_DIR = '/tmp/moltbot-backup-repo';
 
 /**
  * Sync moltbot config, workspace, and skills from container to R2 for persistence.
@@ -104,147 +105,164 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
 }
 
 /**
- * Backup bot memory to a private GitHub gist as a secondary backup.
- * This provides a visible, verifiable backup outside of Cloudflare.
+ * Backup bot memory to a private GitHub repository as a secondary backup.
+ * This provides a visible, verifiable backup outside of Cloudflare with full git history.
  * 
  * Files backed up:
  * - IDENTITY.md (bot personality)
- * - USER.md (user info)
- * - memory/*.md (conversation memory files)
- * - clawdbot.json (config)
+ * - USER.md (user info)  
+ * - memory/ directory (conversation memory files)
+ * - config/ directory (clawdbot config)
+ * - workspace files
+ * 
+ * Each backup is a commit, so you get full history of all changes.
  * 
  * @param sandbox - The sandbox instance
  * @param env - Worker environment bindings (needs GITHUB_TOKEN)
- * @returns SyncResult with gist URL on success
+ * @returns SyncResult with repo URL on success
  */
-export async function syncToGist(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncResult> {
+export async function syncToGitHub(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncResult> {
   if (!env.GITHUB_TOKEN) {
     return { success: false, error: 'GITHUB_TOKEN not configured' };
   }
 
+  const timestamp = new Date().toISOString();
+  const repoUrl = `https://github.com/${GITHUB_BACKUP_REPO}`;
+
   try {
-    // Read memory files from container
-    const readFilesCmd = `
-      echo "===IDENTITY.md===" && cat /root/clawd/IDENTITY.md 2>/dev/null || echo "(empty)" &&
-      echo "===USER.md===" && cat /root/clawd/USER.md 2>/dev/null || echo "(empty)" &&
-      echo "===MEMORY_FILES===" && find /root/clawd/memory -name "*.md" -type f 2>/dev/null | head -20 &&
-      echo "===CONFIG===" && cat /root/.clawdbot/clawdbot.json 2>/dev/null | head -100 &&
-      echo "===GIST_ID===" && cat ${GIST_ID_FILE} 2>/dev/null || echo ""
+    // Setup git and clone/pull the backup repo
+    const setupCmd = `
+      # Configure git
+      git config --global user.email "moltbot@backup.local"
+      git config --global user.name "Moltbot Backup"
+      
+      # Clone or pull the repo
+      if [ -d "${BACKUP_REPO_DIR}/.git" ]; then
+        cd ${BACKUP_REPO_DIR} && git pull origin main 2>/dev/null || true
+      else
+        rm -rf ${BACKUP_REPO_DIR}
+        git clone https://x-access-token:${env.GITHUB_TOKEN}@github.com/${GITHUB_BACKUP_REPO}.git ${BACKUP_REPO_DIR} 2>&1 || mkdir -p ${BACKUP_REPO_DIR}
+        cd ${BACKUP_REPO_DIR}
+        if [ ! -d ".git" ]; then
+          git init
+          git remote add origin https://x-access-token:${env.GITHUB_TOKEN}@github.com/${GITHUB_BACKUP_REPO}.git
+        fi
+      fi
+      echo "SETUP_OK"
     `;
     
-    const readProc = await sandbox.startProcess(readFilesCmd);
-    await waitForProcess(readProc, 10000);
-    const readLogs = await readProc.getLogs();
-    const output = readLogs.stdout || '';
+    const setupProc = await sandbox.startProcess(setupCmd);
+    await waitForProcess(setupProc, 30000);
+    const setupLogs = await setupProc.getLogs();
     
-    // Parse the output
-    const identityMatch = output.match(/===IDENTITY\.md===\n([\s\S]*?)(?=\n===USER\.md===)/);
-    const userMatch = output.match(/===USER\.md===\n([\s\S]*?)(?=\n===MEMORY_FILES===)/);
-    const memoryFilesMatch = output.match(/===MEMORY_FILES===\n([\s\S]*?)(?=\n===CONFIG===)/);
-    const configMatch = output.match(/===CONFIG===\n([\s\S]*?)(?=\n===GIST_ID===)/);
-    const gistIdMatch = output.match(/===GIST_ID===\n(.*)$/);
+    if (!setupLogs.stdout?.includes('SETUP_OK')) {
+      return {
+        success: false,
+        error: 'Failed to setup git repo',
+        details: setupLogs.stderr || setupLogs.stdout || '',
+      };
+    }
+
+    // Copy files to the backup repo
+    const copyCmd = `
+      cd ${BACKUP_REPO_DIR}
+      
+      # Create directories
+      mkdir -p workspace config
+      
+      # Copy workspace (bot memory)
+      cp -r /root/clawd/* workspace/ 2>/dev/null || true
+      
+      # Copy config
+      cp -r /root/.clawdbot/* config/ 2>/dev/null || true
+      
+      # Remove sensitive data from config backup
+      if [ -f config/clawdbot.json ]; then
+        # Remove any tokens/keys from the backup
+        cat config/clawdbot.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' > config/clawdbot.json.tmp
+        mv config/clawdbot.json.tmp config/clawdbot.json
+      fi
+      
+      # Create timestamp file
+      echo "Last backup: ${timestamp}" > BACKUP_TIMESTAMP.txt
+      
+      # Create README if it doesn't exist
+      if [ ! -f README.md ]; then
+        echo "# Moltbot Memory Backup" > README.md
+        echo "" >> README.md
+        echo "Automated backup of Moltbot memory and configuration." >> README.md
+        echo "" >> README.md
+        echo "## Contents" >> README.md
+        echo "- \\\`workspace/\\\` - Bot memory (IDENTITY.md, USER.md, memory/)" >> README.md
+        echo "- \\\`config/\\\` - Moltbot configuration" >> README.md
+        echo "- \\\`BACKUP_TIMESTAMP.txt\\\` - Last backup time" >> README.md
+      fi
+      
+      echo "COPY_OK"
+    `;
     
-    const identity = identityMatch?.[1]?.trim() || '(empty)';
-    const user = userMatch?.[1]?.trim() || '(empty)';
-    const memoryFiles = memoryFilesMatch?.[1]?.trim() || '';
-    const config = configMatch?.[1]?.trim() || '{}';
-    const existingGistId = gistIdMatch?.[1]?.trim() || '';
+    const copyProc = await sandbox.startProcess(copyCmd);
+    await waitForProcess(copyProc, 15000);
+    const copyLogs = await copyProc.getLogs();
     
-    // Read individual memory files if they exist
-    let memoryContent = '';
-    if (memoryFiles && memoryFiles !== '') {
-      const files = memoryFiles.split('\n').filter(f => f.trim());
-      for (const file of files.slice(0, 10)) { // Limit to 10 files
-        const catProc = await sandbox.startProcess(`echo "### ${file}" && cat "${file}" 2>/dev/null`);
-        await waitForProcess(catProc, 3000);
-        const catLogs = await catProc.getLogs();
-        memoryContent += (catLogs.stdout || '') + '\n\n';
-      }
+    if (!copyLogs.stdout?.includes('COPY_OK')) {
+      return {
+        success: false,
+        error: 'Failed to copy files',
+        details: copyLogs.stderr || copyLogs.stdout || '',
+      };
+    }
+
+    // Commit and push
+    const pushCmd = `
+      cd ${BACKUP_REPO_DIR}
+      
+      # Add all files
+      git add -A
+      
+      # Check if there are changes to commit
+      if git diff --staged --quiet; then
+        echo "NO_CHANGES"
+      else
+        git commit -m "Backup: ${timestamp}"
+        git branch -M main
+        git push -u origin main 2>&1
+        echo "PUSH_OK"
+      fi
+    `;
+    
+    const pushProc = await sandbox.startProcess(pushCmd);
+    await waitForProcess(pushProc, 30000);
+    const pushLogs = await pushProc.getLogs();
+    const pushOutput = pushLogs.stdout || '';
+    
+    if (pushOutput.includes('NO_CHANGES')) {
+      return { 
+        success: true, 
+        lastSync: timestamp, 
+        repoUrl,
+        details: 'No changes to backup',
+      };
     }
     
-    // Build gist payload
-    const timestamp = new Date().toISOString();
-    const gistFiles: Record<string, { content: string }> = {
-      'IDENTITY.md': { content: identity },
-      'USER.md': { content: user },
-      'config.json': { content: config },
-      'backup-timestamp.txt': { content: `Last backup: ${timestamp}` },
-    };
-    
-    if (memoryContent.trim()) {
-      gistFiles['memory-files.md'] = { content: memoryContent };
-    }
-    
-    // Create or update gist
-    const gistPayload = JSON.stringify({
-      description: `Moltbot Memory Backup - ${timestamp}`,
-      public: false,
-      files: gistFiles,
-    });
-    
-    let gistUrl = '';
-    
-    if (existingGistId) {
-      // Update existing gist
-      const updateCmd = `curl -s -X PATCH \
-        -H "Authorization: token ${env.GITHUB_TOKEN}" \
-        -H "Accept: application/vnd.github.v3+json" \
-        -d '${gistPayload.replace(/'/g, "'\\''")}' \
-        "https://api.github.com/gists/${existingGistId}"`;
-      
-      const updateProc = await sandbox.startProcess(updateCmd);
-      await waitForProcess(updateProc, 15000);
-      const updateLogs = await updateProc.getLogs();
-      
-      try {
-        const response = JSON.parse(updateLogs.stdout || '{}');
-        gistUrl = response.html_url || '';
-      } catch {
-        // If update fails, create new
-      }
-    }
-    
-    if (!gistUrl) {
-      // Create new gist
-      const createCmd = `curl -s -X POST \
-        -H "Authorization: token ${env.GITHUB_TOKEN}" \
-        -H "Accept: application/vnd.github.v3+json" \
-        -d '${gistPayload.replace(/'/g, "'\\''")}' \
-        "https://api.github.com/gists"`;
-      
-      const createProc = await sandbox.startProcess(createCmd);
-      await waitForProcess(createProc, 15000);
-      const createLogs = await createProc.getLogs();
-      
-      try {
-        const response = JSON.parse(createLogs.stdout || '{}');
-        gistUrl = response.html_url || '';
-        const gistId = response.id || '';
-        
-        if (gistId) {
-          // Save gist ID for future updates
-          await sandbox.startProcess(`echo "${gistId}" > ${GIST_ID_FILE}`);
-        }
-      } catch (e) {
-        return {
-          success: false,
-          error: 'Failed to parse gist response',
-          details: createLogs.stdout || createLogs.stderr || '',
-        };
-      }
-    }
-    
-    if (gistUrl) {
-      return { success: true, gistUrl, lastSync: timestamp };
+    if (pushOutput.includes('PUSH_OK') || pushOutput.includes('main -> main')) {
+      return { success: true, lastSync: timestamp, repoUrl };
     } else {
-      return { success: false, error: 'Failed to create/update gist' };
+      return {
+        success: false,
+        error: 'Failed to push to GitHub',
+        details: pushLogs.stderr || pushOutput,
+      };
     }
     
   } catch (err) {
     return {
       success: false,
-      error: 'Gist sync error',
+      error: 'GitHub sync error',
       details: err instanceof Error ? err.message : 'Unknown error',
     };
   }
 }
+
+// Keep the old function name as alias for backwards compatibility
+export const syncToGist = syncToGitHub;

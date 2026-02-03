@@ -27,7 +27,7 @@ RUN mkdir -p /root/.clawdbot \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script - force rebuild
-ARG CACHE_BUST=2026-02-03-gist-backup-v17
+ARG CACHE_BUST=2026-02-03-repo-backup-v18
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh
 
