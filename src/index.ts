@@ -26,7 +26,7 @@ import { getSandbox, Sandbox, type SandboxOptions } from '@cloudflare/sandbox';
 import type { AppEnv, MoltbotEnv } from './types';
 import { MOLTBOT_PORT } from './config';
 import { createAccessMiddleware } from './auth';
-import { ensureMoltbotGateway, findExistingMoltbotProcess, syncToR2 } from './gateway';
+import { ensureMoltbotGateway, findExistingMoltbotProcess, syncToR2, syncToGist } from './gateway';
 import { publicRoutes, api, adminUi, debug, cdp } from './routes';
 import loadingPageHtml from './assets/loading.html';
 import configErrorHtml from './assets/config-error.html';
@@ -394,12 +394,24 @@ async function scheduled(
   const sandbox = getSandbox(env.Sandbox, 'moltbot', options);
 
   console.log('[cron] Starting backup sync to R2...');
-  const result = await syncToR2(sandbox, env);
+  const r2Result = await syncToR2(sandbox, env);
   
-  if (result.success) {
-    console.log('[cron] Backup sync completed successfully at', result.lastSync);
+  if (r2Result.success) {
+    console.log('[cron] R2 backup completed successfully at', r2Result.lastSync);
   } else {
-    console.error('[cron] Backup sync failed:', result.error, result.details || '');
+    console.error('[cron] R2 backup failed:', r2Result.error, r2Result.details || '');
+  }
+
+  // Also backup to GitHub gist as secondary backup (visible outside Cloudflare)
+  if (env.GITHUB_TOKEN) {
+    console.log('[cron] Starting backup sync to GitHub gist...');
+    const gistResult = await syncToGist(sandbox, env);
+    
+    if (gistResult.success) {
+      console.log('[cron] Gist backup completed:', gistResult.gistUrl);
+    } else {
+      console.error('[cron] Gist backup failed:', gistResult.error, gistResult.details || '');
+    }
   }
 }
 
