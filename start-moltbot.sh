@@ -25,6 +25,16 @@ BACKUP_DIR="/data/moltbot"
 echo "Config directory: $CONFIG_DIR"
 echo "Backup directory: $BACKUP_DIR"
 
+# Log env vars for debugging
+echo "=== Environment Variables ==="
+echo "GITHUB_TOKEN: ${GITHUB_TOKEN:+[SET]}"
+echo "BRAVE_API_KEY: ${BRAVE_API_KEY:+[SET]}"
+echo "ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:+[SET]}"
+echo "TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:+[SET]}"
+echo "TWITTER_AUTH_TOKEN: ${TWITTER_AUTH_TOKEN:+[SET]}"
+echo "TWITTER_CT0: ${TWITTER_CT0:+[SET]}"
+echo "============================="
+
 # Create config directory
 mkdir -p "$CONFIG_DIR"
 
@@ -163,6 +173,13 @@ if (config.models?.providers?.anthropic?.models) {
     }
 }
 
+// Clean up invalid telegram 'dm' key from previous runs
+// (telegram uses 'dmPolicy' at top level, not nested 'dm' object)
+if (config.channels?.telegram?.dm !== undefined) {
+    console.log('Removing invalid telegram.dm key (use dmPolicy instead)');
+    delete config.channels.telegram.dm;
+}
+
 
 
 // Gateway configuration
@@ -187,7 +204,6 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
     config.channels.telegram = config.channels.telegram || {};
     config.channels.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN;
     config.channels.telegram.enabled = true;
-    config.channels.telegram.dm = config.channels.telegram.dm || {};
     config.channels.telegram.dmPolicy = process.env.TELEGRAM_DM_POLICY || 'pairing';
 }
 

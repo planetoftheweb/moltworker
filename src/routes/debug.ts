@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../types';
-import { findExistingMoltbotProcess } from '../gateway';
+import { findExistingMoltbotProcess, buildEnvVars } from '../gateway';
 
 /**
  * Debug routes for inspecting container state
@@ -345,12 +345,56 @@ debug.get('/env', async (c) => {
     has_r2_access_key: !!c.env.R2_ACCESS_KEY_ID,
     has_r2_secret_key: !!c.env.R2_SECRET_ACCESS_KEY,
     has_cf_account_id: !!c.env.CF_ACCOUNT_ID,
+    has_github_token: !!c.env.GITHUB_TOKEN,
+    has_brave_api_key: !!c.env.BRAVE_API_KEY,
+    has_twitter_auth_token: !!c.env.TWITTER_AUTH_TOKEN,
+    has_twitter_ct0: !!c.env.TWITTER_CT0,
     dev_mode: c.env.DEV_MODE,
     debug_routes: c.env.DEBUG_ROUTES,
     bind_mode: c.env.CLAWDBOT_BIND_MODE,
     cf_access_team_domain: c.env.CF_ACCESS_TEAM_DOMAIN,
     has_cf_access_aud: !!c.env.CF_ACCESS_AUD,
   });
+});
+
+// GET /debug/container-env - Show what env vars would be passed to the container
+debug.get('/container-env', async (c) => {
+  const envVars = buildEnvVars(c.env);
+  // Return only the keys (not values) for security
+  return c.json({
+    env_var_keys: Object.keys(envVars),
+    count: Object.keys(envVars).length,
+  });
+});
+
+// GET /debug/container-env-actual - Check what env vars are actually set inside the container
+debug.get('/container-env-actual', async (c) => {
+  const sandbox = c.get('sandbox');
+  
+  try {
+    // Check specific env vars inside the container
+    const proc = await sandbox.startProcess('env | grep -E "GITHUB_TOKEN|BRAVE_API_KEY|ANTHROPIC|OPENAI|TELEGRAM|TWITTER" | cut -d= -f1');
+    
+    let attempts = 0;
+    while (attempts < 10) {
+      await new Promise(r => setTimeout(r, 200));
+      if (proc.status !== 'running') break;
+      attempts++;
+    }
+
+    const logs = await proc.getLogs();
+    const stdout = (logs.stdout || '').trim();
+    const envVarNames = stdout ? stdout.split('\n') : [];
+    
+    return c.json({
+      env_vars_in_container: envVarNames,
+      count: envVarNames.length,
+      raw: stdout,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: errorMessage }, 500);
+  }
 });
 
 // GET /debug/container-config - Read the moltbot config from inside the container
