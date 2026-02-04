@@ -31,7 +31,7 @@ RUN mkdir -p /root/.clawdbot \
     && mkdir -p /root/clawd/skills
 
 # Copy startup and bootstrap scripts - force rebuild
-ARG CACHE_BUST=2026-02-03-bootstrap-v20
+ARG CACHE_BUST=2026-02-03-fix-v21
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 COPY scripts/bootstrap.sh /usr/local/bin/bootstrap.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh /usr/local/bin/bootstrap.sh
