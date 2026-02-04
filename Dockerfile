@@ -19,6 +19,10 @@ RUN npm install -g pnpm
 RUN npm install -g clawdbot@2026.1.24-3 \
     && clawdbot --version
 
+# Install bird CLI for Twitter/X integration
+RUN npm install -g @steipete/bird \
+    && bird --version || true
+
 # Create moltbot directories (paths still use clawdbot until upstream renames)
 # Templates are stored in /root/.clawdbot-templates for initialization
 RUN mkdir -p /root/.clawdbot \
@@ -27,7 +31,7 @@ RUN mkdir -p /root/.clawdbot \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script - force rebuild
-ARG CACHE_BUST=2026-02-03-repo-backup-v18
+ARG CACHE_BUST=2026-02-03-bird-cli-v19
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh
 
