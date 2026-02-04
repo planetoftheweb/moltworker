@@ -30,13 +30,17 @@ RUN mkdir -p /root/.clawdbot \
     && mkdir -p /root/clawd \
     && mkdir -p /root/clawd/skills
 
-# Copy startup script - force rebuild
-ARG CACHE_BUST=2026-02-03-bird-cli-v19
+# Copy startup and bootstrap scripts - force rebuild
+ARG CACHE_BUST=2026-02-03-bootstrap-v20
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
-RUN chmod +x /usr/local/bin/start-moltbot.sh
+COPY scripts/bootstrap.sh /usr/local/bin/bootstrap.sh
+RUN chmod +x /usr/local/bin/start-moltbot.sh /usr/local/bin/bootstrap.sh
 
 # Copy default configuration template
 COPY moltbot.json.template /root/.clawdbot-templates/moltbot.json.template
+
+# Copy tools inventory for bot self-check
+COPY TOOLS.md /root/clawd/TOOLS.md
 
 # Copy custom skills
 COPY skills/ /root/clawd/skills/

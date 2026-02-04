@@ -15,6 +15,18 @@ if pgrep -f "clawdbot gateway" > /dev/null 2>&1; then
     exit 0
 fi
 
+# ============================================================
+# BOOTSTRAP: Check and repair tool installation
+# ============================================================
+# Safety net to catch any missing tools before the bot starts
+BOOTSTRAP_SCRIPT="/usr/local/bin/bootstrap.sh"
+if [ -f "$BOOTSTRAP_SCRIPT" ]; then
+    echo "Running bootstrap checks..."
+    bash "$BOOTSTRAP_SCRIPT" || echo "Bootstrap had issues but continuing..."
+else
+    echo "Bootstrap script not found, skipping tool checks"
+fi
+
 # Paths (clawdbot paths are used internally - upstream hasn't renamed yet)
 CONFIG_DIR="/root/.clawdbot"
 CONFIG_FILE="$CONFIG_DIR/clawdbot.json"
