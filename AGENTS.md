@@ -10,7 +10,7 @@ This is a Cloudflare Worker that runs [Moltbot](https://molt.bot/) in a Cloudfla
 - API endpoints at `/api/*` for device pairing
 - Debug endpoints at `/debug/*` for troubleshooting
 
-**Note:** The CLI tool is still named `clawdbot` (upstream hasn't renamed yet), so CLI commands and internal config paths still use that name.
+**Note:** The CLI tool has been renamed from `clawdbot` to `openclaw`. Config paths have changed from `~/.clawdbot/` to `~/.openclaw/`.
 
 ## Project Structure
 
@@ -50,9 +50,9 @@ src/
 ### CLI Commands
 
 When calling the moltbot CLI from the worker, always include `--url ws://localhost:18789`.
-Note: The CLI is still named `clawdbot` until upstream renames it:
+When calling the openclaw CLI from the worker:
 ```typescript
-sandbox.startProcess('clawdbot devices list --json --url ws://localhost:18789')
+sandbox.startProcess('openclaw devices list --json --url ws://localhost:18789')
 ```
 
 CLI commands take 10-15 seconds due to WebSocket connection overhead. Use `waitForProcess()` helper in `src/routes/api.ts`.
@@ -176,7 +176,7 @@ The Dockerfile includes a cache bust comment. When changing `moltbot.json.templa
 
 Moltbot configuration is built at container startup:
 
-1. `moltbot.json.template` is copied to `~/.clawdbot/clawdbot.json` (internal path unchanged)
+1. `moltbot.json.template` is copied to `~/.openclaw/openclaw.json`
 2. `start-moltbot.sh` updates the config with values from environment variables
 3. Gateway starts with `--allow-unconfigured` flag (skips onboarding wizard)
 
@@ -251,7 +251,7 @@ The R2 backup contains THREE directories that MUST ALL be backed up and restored
 
 | R2 Path | Container Path | Contents | CRITICAL? |
 |---------|---------------|----------|-----------|
-| `/data/moltbot/clawdbot/` | `/root/.clawdbot/` | Config, devices, credentials | Yes |
+| `/data/moltbot/openclaw/` | `/root/.openclaw/` | Config, devices, credentials | Yes |
 | `/data/moltbot/workspace/` | `/root/clawd/` | **BOT MEMORY** - IDENTITY.md, USER.md, memory/, conversations | **CRITICAL** |
 | `/data/moltbot/skills/` | `/root/clawd/skills/` | Custom skills | Yes |
 

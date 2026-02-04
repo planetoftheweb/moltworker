@@ -8,7 +8,7 @@ echo "=== BOOTSTRAP: Checking required tools ==="
 
 # Tool inventory - add new tools here
 REQUIRED_TOOLS=(
-    "clawdbot:clawdbot --version:npm install -g clawdbot@2026.1.24-3"
+    "openclaw:openclaw --version:npm install -g openclaw@2026.2.2-3"
     "bird:bird --version:npm install -g @steipete/bird"
     "rsync:rsync --version:apt-get install -y rsync"
     "git:git --version:apt-get install -y git"

@@ -1,13 +1,13 @@
 # Required Tools Inventory
 
-This file lists all tools that should be installed in the Moltbot container.
+This file lists all tools that should be installed in the OpenClaw container.
 The bot can reference this to self-check and report missing tools.
 
 ## Core Tools (baked into Docker image)
 
 | Tool | Command | Purpose | Install Command |
 |------|---------|---------|-----------------|
-| clawdbot | `clawdbot --version` | Moltbot CLI | `npm install -g clawdbot@2026.1.24-3` |
+| openclaw | `openclaw --version` | OpenClaw CLI | `npm install -g openclaw@2026.2.2-3` |
 | bird | `bird --version` | Twitter/X CLI | `npm install -g @steipete/bird` |
 | node | `node --version` | JavaScript runtime | (in base image) |
 | npm | `npm --version` | Package manager | (in base image) |
@@ -22,10 +22,10 @@ The bot can run these to verify tools are working:
 
 ```bash
 # Quick health check
-clawdbot --version && bird --version && echo "Core tools OK"
+openclaw --version && bird --version && echo "Core tools OK"
 
 # Full inventory check
-for cmd in clawdbot bird node npm pnpm rsync git curl; do
+for cmd in openclaw bird node npm pnpm rsync git curl; do
     if command -v $cmd > /dev/null 2>&1; then
         echo "$cmd: OK"
     else

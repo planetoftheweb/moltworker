@@ -1,6 +1,6 @@
 FROM docker.io/cloudflare/sandbox:0.7.0
 
-# Install Node.js 22 (required by clawdbot) and rsync (for R2 backup sync)
+# Install Node.js 22 (required by openclaw) and rsync (for R2 backup sync)
 # The base image has Node 20, we need to replace it with Node 22
 # Using direct binary download for reliability
 ENV NODE_VERSION=22.13.1
@@ -14,30 +14,30 @@ RUN apt-get update && apt-get install -y xz-utils ca-certificates rsync \
 # Install pnpm globally
 RUN npm install -g pnpm
 
-# Install moltbot (CLI is still named clawdbot until upstream renames)
+# Install openclaw (formerly clawdbot/moltbot)
 # Pin to specific version for reproducible builds
-RUN npm install -g clawdbot@2026.1.24-3 \
-    && clawdbot --version
+RUN npm install -g openclaw@2026.2.2-3 \
+    && openclaw --version
 
 # Install bird CLI for Twitter/X integration
 RUN npm install -g @steipete/bird \
     && bird --version || true
 
-# Create moltbot directories (paths still use clawdbot until upstream renames)
-# Templates are stored in /root/.clawdbot-templates for initialization
-RUN mkdir -p /root/.clawdbot \
-    && mkdir -p /root/.clawdbot-templates \
+# Create openclaw directories
+# Note: openclaw uses ~/.openclaw/ for config
+RUN mkdir -p /root/.openclaw \
+    && mkdir -p /root/.openclaw-templates \
     && mkdir -p /root/clawd \
     && mkdir -p /root/clawd/skills
 
 # Copy startup and bootstrap scripts - force rebuild
-ARG CACHE_BUST=2026-02-03-fix-v21
+ARG CACHE_BUST=2026-02-03-openclaw-v22
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 COPY scripts/bootstrap.sh /usr/local/bin/bootstrap.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh /usr/local/bin/bootstrap.sh
 
 # Copy default configuration template
-COPY moltbot.json.template /root/.clawdbot-templates/moltbot.json.template
+COPY moltbot.json.template /root/.openclaw-templates/openclaw.json.template
 
 # Copy tools inventory for bot self-check
 COPY TOOLS.md /root/clawd/TOOLS.md

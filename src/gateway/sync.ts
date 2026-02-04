@@ -49,13 +49,13 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
   // Sanity check: verify source has critical files before syncing
   // This prevents accidentally overwriting a good backup with empty/corrupted data
   try {
-    const checkProc = await sandbox.startProcess('test -f /root/.clawdbot/clawdbot.json && echo "ok"');
+    const checkProc = await sandbox.startProcess('(test -f /root/.openclaw/openclaw.json || test -f /root/.clawdbot/clawdbot.json) && echo "ok"');
     await waitForProcess(checkProc, 5000);
     const checkLogs = await checkProc.getLogs();
     if (!checkLogs.stdout?.includes('ok')) {
       return { 
         success: false, 
-        error: 'Sync aborted: source missing clawdbot.json',
+        error: 'Sync aborted: source missing config file',
         details: 'The local config directory is missing critical files. This could indicate corruption or an incomplete setup.',
       };
     }
@@ -72,7 +72,9 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
   // CRITICAL: The workspace (/root/clawd/) contains the bot's memory!
   // This includes IDENTITY.md, USER.md, memory/, and all conversation context.
   // DO NOT REMOVE the workspace backup - it's the bot's persistent memory!
-  const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='node_modules' /root/.clawdbot/ ${R2_MOUNT_PATH}/clawdbot/ && rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='node_modules' --exclude='.git' /root/clawd/ ${R2_MOUNT_PATH}/workspace/ && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync`;
+  // Sync from openclaw path (or legacy clawdbot path) to R2
+  // Note: We sync to openclaw/ in R2 for new backups, but restore checks both paths
+  const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='node_modules' /root/.openclaw/ ${R2_MOUNT_PATH}/openclaw/ 2>/dev/null || rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='node_modules' /root/.clawdbot/ ${R2_MOUNT_PATH}/clawdbot/ && rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='node_modules' --exclude='.git' /root/clawd/ ${R2_MOUNT_PATH}/workspace/ && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync`;
   
   try {
     const proc = await sandbox.startProcess(syncCmd);
@@ -112,7 +114,7 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
  * - IDENTITY.md (bot personality)
  * - USER.md (user info)  
  * - memory/ directory (conversation memory files)
- * - config/ directory (clawdbot config)
+ * - config/ directory (openclaw config)
  * - workspace files
  * 
  * Each backup is a commit, so you get full history of all changes.
@@ -174,11 +176,13 @@ export async function syncToGitHub(sandbox: Sandbox, env: MoltbotEnv): Promise<S
       cp -r /root/clawd/* workspace/ 2>/dev/null || true
       
       # Copy config
-      cp -r /root/.clawdbot/* config/ 2>/dev/null || true
+      cp -r /root/.openclaw/* config/ 2>/dev/null || cp -r /root/.clawdbot/* config/ 2>/dev/null || true
       
       # Remove sensitive data from config backup
-      if [ -f config/clawdbot.json ]; then
-        # Remove any tokens/keys from the backup
+      if [ -f config/openclaw.json ]; then
+        cat config/openclaw.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' > config/openclaw.json.tmp
+        mv config/openclaw.json.tmp config/openclaw.json
+      elif [ -f config/clawdbot.json ]; then
         cat config/clawdbot.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' > config/clawdbot.json.tmp
         mv config/clawdbot.json.tmp config/clawdbot.json
       fi

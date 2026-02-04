@@ -13,8 +13,8 @@ const debug = new Hono<AppEnv>();
 debug.get('/version', async (c) => {
   const sandbox = c.get('sandbox');
   try {
-    // Get moltbot version (CLI is still named clawdbot until upstream renames)
-    const versionProcess = await sandbox.startProcess('clawdbot --version');
+    // Get openclaw version
+    const versionProcess = await sandbox.startProcess('openclaw --version');
     await new Promise(resolve => setTimeout(resolve, 500));
     const versionLogs = await versionProcess.getLogs();
     const moltbotVersion = (versionLogs.stdout || versionLogs.stderr || '').trim();
@@ -123,10 +123,10 @@ debug.get('/gateway-api', async (c) => {
   }
 });
 
-// GET /debug/cli - Test moltbot CLI commands (CLI is still named clawdbot)
+// GET /debug/cli - Test openclaw CLI commands
 debug.get('/cli', async (c) => {
   const sandbox = c.get('sandbox');
-  const cmd = c.req.query('cmd') || 'clawdbot --help';
+  const cmd = c.req.query('cmd') || 'openclaw --help';
   
   try {
     const proc = await sandbox.startProcess(cmd);
@@ -402,7 +402,7 @@ debug.get('/container-config', async (c) => {
   const sandbox = c.get('sandbox');
   
   try {
-    const proc = await sandbox.startProcess('cat /root/.clawdbot/clawdbot.json');
+    const proc = await sandbox.startProcess('cat /root/.openclaw/openclaw.json 2>/dev/null || cat /root/.clawdbot/clawdbot.json 2>/dev/null');
     
     let attempts = 0;
     while (attempts < 10) {
@@ -451,10 +451,10 @@ debug.get('/backup-health', async (c) => {
       fi &&
       echo "" &&
       echo "2. Config Backup:" &&
-      if [ -f "/data/moltbot/clawdbot/clawdbot.json" ]; then
-        echo "   OK: clawdbot.json exists in R2"
+      if [ -f "/data/moltbot/openclaw/openclaw.json" ] || [ -f "/data/moltbot/clawdbot/clawdbot.json" ]; then
+        echo "   OK: config exists in R2"
       else
-        echo "   FAIL: clawdbot.json missing from R2"
+        echo "   FAIL: config missing from R2"
       fi &&
       echo "" &&
       echo "3. Workspace Backup (BOT MEMORY):" &&
@@ -485,7 +485,7 @@ debug.get('/backup-health', async (c) => {
     
     const output = logs.stdout || '';
     const hasMount = output.includes('R2 is mounted');
-    const hasConfig = output.includes('clawdbot.json exists');
+    const hasConfig = output.includes('config exists');
     const hasWorkspace = output.includes('workspace dir exists');
     
     return c.json({
