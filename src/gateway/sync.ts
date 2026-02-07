@@ -169,23 +169,46 @@ export async function syncToGitHub(sandbox: Sandbox, env: MoltbotEnv): Promise<S
     const copyCmd = `
       cd ${BACKUP_REPO_DIR}
       
+      # Create .gitignore to prevent secrets from being committed
+      cat > .gitignore << 'GIEOF'
+# Sensitive files - never commit these
+.env
+.env.*
+*.secrets
+.x-api-env
+.api-env
+*.key
+*.pem
+**/credentials/
+**/exec-approvals.json
+load-env.sh
+**/load-env.sh
+GIEOF
+      
       # Create directories
       mkdir -p workspace config
       
       # Copy workspace (bot memory)
       cp -r /root/clawd/* workspace/ 2>/dev/null || true
       
+      # Remove any sensitive files that were copied
+      rm -f workspace/.env workspace/.env.* workspace/load-env.sh 2>/dev/null || true
+      
       # Copy config
       cp -r /root/.openclaw/* config/ 2>/dev/null || cp -r /root/.clawdbot/* config/ 2>/dev/null || true
       
       # Remove sensitive data from config backup
       if [ -f config/openclaw.json ]; then
-        cat config/openclaw.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' > config/openclaw.json.tmp
+        cat config/openclaw.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' | sed 's/"apiKey":[^,}]*/"apiKey":"[REDACTED]"/g' | sed 's/"botToken":[^,}]*/"botToken":"[REDACTED]"/g' > config/openclaw.json.tmp
         mv config/openclaw.json.tmp config/openclaw.json
       elif [ -f config/clawdbot.json ]; then
-        cat config/clawdbot.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' > config/clawdbot.json.tmp
+        cat config/clawdbot.json | sed 's/"token":[^,}]*/"token":"[REDACTED]"/g' | sed 's/"apiKey":[^,}]*/"apiKey":"[REDACTED]"/g' | sed 's/"botToken":[^,}]*/"botToken":"[REDACTED]"/g' > config/clawdbot.json.tmp
         mv config/clawdbot.json.tmp config/clawdbot.json
       fi
+      
+      # Remove sensitive config files
+      rm -f config/credentials/* 2>/dev/null || true
+      rm -f config/exec-approvals.json 2>/dev/null || true
       
       # Create timestamp file
       echo "Last backup: ${timestamp}" > BACKUP_TIMESTAMP.txt
