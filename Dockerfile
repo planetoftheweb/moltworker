@@ -21,10 +21,6 @@ RUN npm cache clean --force \
     && npm install -g openclaw@2026.2.3-1 \
     && openclaw --version
 
-# Install bird CLI for Twitter/X integration
-RUN npm install -g @steipete/bird \
-    && bird --version || true
-
 # Create openclaw directories
 # Note: openclaw uses ~/.openclaw/ for config
 RUN mkdir -p /root/.openclaw \
@@ -33,7 +29,7 @@ RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/clawd/skills
 
 # Copy startup and bootstrap scripts - force rebuild
-ARG CACHE_BUST=2026-02-06-opus46-v24
+ARG CACHE_BUST=2026-02-07-api-env-publer-v27
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 COPY scripts/bootstrap.sh /usr/local/bin/bootstrap.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh /usr/local/bin/bootstrap.sh

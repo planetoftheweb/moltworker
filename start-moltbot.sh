@@ -42,9 +42,37 @@ echo "GITHUB_TOKEN: ${GITHUB_TOKEN:+[SET]}"
 echo "BRAVE_API_KEY: ${BRAVE_API_KEY:+[SET]}"
 echo "ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:+[SET]}"
 echo "TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:+[SET]}"
-echo "TWITTER_AUTH_TOKEN: ${TWITTER_AUTH_TOKEN:+[SET]}"
-echo "TWITTER_CT0: ${TWITTER_CT0:+[SET]}"
+echo "X_BEARER_TOKEN: ${X_BEARER_TOKEN:+[SET]}"
+echo "X_CONSUMER_KEY: ${X_CONSUMER_KEY:+[SET]}"
+echo "X_CONSUMER_SECRET: ${X_CONSUMER_SECRET:+[SET]}"
+echo "PUBLER_API_KEY: ${PUBLER_API_KEY:+[SET]}"
+echo "PUBLER_WORKSPACE_ID: ${PUBLER_WORKSPACE_ID:+[SET]}"
 echo "============================="
+
+# ============================================================
+# WRITE API SECRETS TO TEMP FILE FOR BOT EXEC SESSIONS
+# ============================================================
+# OpenClaw exec sessions (where the bot runs commands) do NOT inherit
+# the gateway process's env vars. So we write API secrets to a file
+# that bot skills can `source` before running commands.
+#
+# IMPORTANT: The heredoc delimiter is UNQUOTED (no quotes around ENVEOF)
+# so that ${VAR} gets expanded by the shell at write time.
+#
+# To add a new API secret:
+#   1. Add the export line below
+#   2. Add logging above in the "Environment Variables" section
+#   3. See AGENTS.md "Adding a New API Secret" for the full checklist
+# ============================================================
+cat > /tmp/.api-env << ENVEOF
+export X_BEARER_TOKEN="${X_BEARER_TOKEN}"
+export X_CONSUMER_KEY="${X_CONSUMER_KEY}"
+export X_CONSUMER_SECRET="${X_CONSUMER_SECRET}"
+export PUBLER_API_KEY="${PUBLER_API_KEY}"
+export PUBLER_WORKSPACE_ID="${PUBLER_WORKSPACE_ID}"
+ENVEOF
+chmod 600 /tmp/.api-env
+echo "Wrote API secrets to /tmp/.api-env"
 
 # Create config directory
 mkdir -p "$CONFIG_DIR"

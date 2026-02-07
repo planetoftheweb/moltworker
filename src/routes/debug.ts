@@ -347,8 +347,9 @@ debug.get('/env', async (c) => {
     has_cf_account_id: !!c.env.CF_ACCOUNT_ID,
     has_github_token: !!c.env.GITHUB_TOKEN,
     has_brave_api_key: !!c.env.BRAVE_API_KEY,
-    has_twitter_auth_token: !!c.env.TWITTER_AUTH_TOKEN,
-    has_twitter_ct0: !!c.env.TWITTER_CT0,
+    has_x_bearer_token: !!c.env.X_BEARER_TOKEN,
+    has_x_consumer_key: !!c.env.X_CONSUMER_KEY,
+    has_x_consumer_secret: !!c.env.X_CONSUMER_SECRET,
     dev_mode: c.env.DEV_MODE,
     debug_routes: c.env.DEBUG_ROUTES,
     bind_mode: c.env.CLAWDBOT_BIND_MODE,
@@ -373,7 +374,7 @@ debug.get('/container-env-actual', async (c) => {
   
   try {
     // Check specific env vars inside the container
-    const proc = await sandbox.startProcess('env | grep -E "GITHUB_TOKEN|BRAVE_API_KEY|ANTHROPIC|OPENAI|TELEGRAM|TWITTER" | cut -d= -f1');
+    const proc = await sandbox.startProcess('env | grep -E "GITHUB_TOKEN|BRAVE_API_KEY|ANTHROPIC|OPENAI|TELEGRAM|X_BEARER|X_CONSUMER|VIBEIT|OPENROUTER" | cut -d= -f1');
     
     let attempts = 0;
     while (attempts < 10) {

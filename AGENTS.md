@@ -221,6 +221,99 @@ See [Moltbot docs](https://docs.molt.bot/gateway/configuration) for full schema.
 3. Update `.dev.vars.example`
 4. Document in README.md secrets table
 
+### Adding a New API Secret (External Service Key)
+
+This is the process for adding a new third-party API key (e.g., X API, YouTube API,
+some new service). There are **5 files to touch** and **2 CLI commands** to run.
+All steps are required; skipping any one will cause the secret to not reach the bot.
+
+**Why this is complex:** Cloudflare Workers pass secrets to the Worker `env` object.
+The Worker then passes them to the sandbox container via `sandbox.startProcess({ env })`.
+But OpenClaw exec sessions (where the bot runs commands) do NOT inherit the gateway
+process env vars. So secrets must also be written to a temp file the bot can `source`.
+
+#### Files to Update (in order)
+
+1. **`src/types.ts`** — Add the new key to the `MoltbotEnv` interface:
+   ```typescript
+   NEW_API_KEY?: string;  // Description of what this key is for
+   ```
+
+2. **`src/gateway/env.ts`** — Add to BOTH functions:
+   - `buildEnvVars()` — Maps Worker env to container env:
+     ```typescript
+     if (env.NEW_API_KEY) envVars.NEW_API_KEY = env.NEW_API_KEY;
+     ```
+   - `getEnvFingerprint()` — Detects when secrets change (triggers container restart):
+     ```typescript
+     if (env.NEW_API_KEY) keys.push('NEW_API_KEY');
+     ```
+
+3. **`start-moltbot.sh`** — Two places to update:
+   - **Logging section** (around line 40) — Add status line:
+     ```bash
+     echo "NEW_API_KEY: ${NEW_API_KEY:+[SET]}"
+     ```
+   - **Temp env file section** (around line 50) — Add export line inside the heredoc:
+     ```bash
+     export NEW_API_KEY="${NEW_API_KEY}"
+     ```
+     > **CRITICAL:** The heredoc delimiter must be UNQUOTED (`<< ENVEOF` not `<< 'ENVEOF'`)
+     > so that `${VAR}` gets expanded by the shell at write time.
+
+4. **`wrangler.jsonc`** — Add a comment documenting the secret in the secrets section.
+
+5. **Bot skill file** (e.g., `skills/new-api/SKILL.md`) — Include sourcing instructions:
+   ```bash
+   source /tmp/.api-env && curl -H "Authorization: Bearer $NEW_API_KEY" ...
+   ```
+   > All API secrets share `/tmp/.api-env`. When adding a new API, just add export
+   > lines to the heredoc block in `start-moltbot.sh`.
+
+#### CLI Commands (after code changes)
+
+1. **Set the secret in Cloudflare:**
+   ```bash
+   npx wrangler secret put NEW_API_KEY
+   # Paste the value when prompted (interactive mode is most reliable)
+   ```
+
+2. **Deploy:**
+   ```bash
+   npm run deploy
+   ```
+   > **NEVER use `npx wrangler deploy` directly!** It skips `npm run build`, meaning
+   > your TypeScript changes won't be compiled and the old code gets deployed.
+
+#### After Deployment
+
+- Wait ~90 seconds for the new container to boot
+- The env fingerprint mechanism will detect the new key and restart the process
+- Verify via `wrangler tail` or by asking the bot to check
+
+#### Debugging Secrets
+
+```bash
+# List all secrets (names only, values are encrypted)
+npx wrangler secret list
+
+# Live logs (WARNING: sandbox.setEnvVars logs expose secret values in plaintext!)
+npx wrangler tail
+
+# Check env vars from inside the container (if debug routes enabled)
+GET /debug/env
+```
+
+#### What Can Go Wrong (Lessons Learned)
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Secret not in container | Used `npx wrangler deploy` instead of `npm run deploy` | Always use `npm run deploy` |
+| Secret in container but not in bot exec sessions | OpenClaw exec sessions don't inherit gateway env | Write to `/tmp/.x-api-env` in `start-moltbot.sh` |
+| Old secret values persist after redeploy | Stale container process not restarted | Env fingerprint mechanism handles this automatically |
+| Secret shows as empty after `wrangler secret put` | Non-interactive mode or piping issues | Use interactive prompt (no pipe, no echo) |
+| `wrangler tail` exposes secrets in plaintext | Cloudflare's internal `setEnvVars` logging | Be aware; rotate keys after debug sessions |
+
 ### Debugging
 
 ```bash

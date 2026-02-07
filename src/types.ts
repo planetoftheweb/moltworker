@@ -41,13 +41,17 @@ export interface MoltbotEnv {
   GITHUB_TOKEN?: string;
   // Brave Search API key for web search
   BRAVE_API_KEY?: string;
-  // Twitter authentication tokens
-  TWITTER_AUTH_TOKEN?: string;
-  TWITTER_CT0?: string;
+  // X/Twitter Official API credentials (from developer.x.com)
+  X_BEARER_TOKEN?: string;       // App-only auth (read tweets, search)
+  X_CONSUMER_KEY?: string;       // API Key (for user-context actions)
+  X_CONSUMER_SECRET?: string;    // API Key Secret
   // OpenRouter API key for accessing multiple models
   OPENROUTER_API_KEY?: string;
   // VibeIt API key for querying vibeit.work
   VIBEIT_API_KEY?: string;
+  // Publer API for social media scheduling/publishing (publer.com)
+  PUBLER_API_KEY?: string;         // API key (Business plan required)
+  PUBLER_WORKSPACE_ID?: string;    // Workspace ID for API requests
 }
 
 /**

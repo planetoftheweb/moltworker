@@ -81,6 +81,11 @@
   // - SLACK_APP_TOKEN: (optional) Slack app token
   // - MOLTBOT_GATEWAY_TOKEN: (optional) Token to protect gateway access, if unset device pairing will be used
   // - CDP_SECRET: (optional) Shared secret for /cdp endpoint authentication
+  // - X_BEARER_TOKEN: (optional) X/Twitter API v2 Bearer token for reading tweets/searching
+  // - X_CONSUMER_KEY: (optional) X/Twitter API Key (for user-context actions)
+  // - X_CONSUMER_SECRET: (optional) X/Twitter API Key Secret
+  // - PUBLER_API_KEY: (optional) Publer API key (Business plan, publer.com)
+  // - PUBLER_WORKSPACE_ID: (optional) Publer workspace ID
   //
   // R2 persistent storage secrets (required for data persistence across sessions):
   // - R2_ACCESS_KEY_ID: R2 access key ID (from R2 API tokens)

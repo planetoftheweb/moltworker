@@ -8,7 +8,6 @@ The bot can reference this to self-check and report missing tools.
 | Tool | Command | Purpose | Install Command |
 |------|---------|---------|-----------------|
 | openclaw | `openclaw --version` | OpenClaw CLI | `npm install -g openclaw@2026.2.3-1` |
-| bird | `bird --version` | Twitter/X CLI | `npm install -g @steipete/bird` |
 | node | `node --version` | JavaScript runtime | (in base image) |
 | npm | `npm --version` | Package manager | (in base image) |
 | pnpm | `pnpm --version` | Fast package manager | `npm install -g pnpm` |
@@ -22,10 +21,10 @@ The bot can run these to verify tools are working:
 
 ```bash
 # Quick health check
-openclaw --version && bird --version && echo "Core tools OK"
+openclaw --version && echo "Core tools OK"
 
 # Full inventory check
-for cmd in openclaw bird node npm pnpm rsync git curl; do
+for cmd in openclaw node npm pnpm rsync git curl; do
     if command -v $cmd > /dev/null 2>&1; then
         echo "$cmd: OK"
     else
