@@ -395,6 +395,17 @@ async function scheduled(
   const options = buildSandboxOptions(env);
   const sandbox = getSandbox(env.Sandbox, 'moltbot', options);
 
+  // Ensure gateway is running (keeps container alive between requests)
+  // This is critical for Telegram/Discord bots that need persistent WebSocket connections
+  try {
+    console.log('[cron] Ensuring gateway is alive...');
+    await ensureMoltbotGateway(sandbox, env);
+    console.log('[cron] Gateway is running');
+  } catch (err) {
+    console.error('[cron] Failed to ensure gateway:', err);
+    // Don't return - still try to backup whatever state exists
+  }
+
   console.log('[cron] Starting backup sync to R2...');
   const r2Result = await syncToR2(sandbox, env);
   

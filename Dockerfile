@@ -18,7 +18,7 @@ RUN npm install -g pnpm
 # Pin to specific version for reproducible builds
 # Force rebuild: 2026-02-04-openclaw-fresh
 RUN npm cache clean --force \
-    && npm install -g openclaw@2026.2.2-3 \
+    && npm install -g openclaw@2026.2.3-1 \
     && openclaw --version
 
 # Install bird CLI for Twitter/X integration
@@ -33,7 +33,7 @@ RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/clawd/skills
 
 # Copy startup and bootstrap scripts - force rebuild
-ARG CACHE_BUST=2026-02-04-openclaw-v23
+ARG CACHE_BUST=2026-02-06-opus46-v24
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 COPY scripts/bootstrap.sh /usr/local/bin/bootstrap.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh /usr/local/bin/bootstrap.sh

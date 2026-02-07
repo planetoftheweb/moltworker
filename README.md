@@ -326,6 +326,17 @@ node /root/clawd/skills/cloudflare-browser/scripts/video.js "https://site1.com,h
 
 See `skills/cloudflare-browser/SKILL.md` for full documentation.
 
+## Optional: VibeIt API
+
+Give the bot access to the [VibeIt](https://vibeit.work) platform for searching vibe coding resources, apps, collections, and stats.
+
+```bash
+npx wrangler secret put VIBEIT_API_KEY
+# Enter your API key (starts with vib_)
+```
+
+See `skills/vibeit-api/SKILL.md` for full documentation and example queries.
+
 ## Optional: Cloudflare AI Gateway
 
 You can route API requests through [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) for caching, rate limiting, analytics, and cost tracking. AI Gateway supports multiple providers — configure your preferred provider in the gateway and use these env vars:
@@ -381,6 +392,7 @@ The `AI_GATEWAY_*` variables take precedence over `ANTHROPIC_*` if both are set.
 | `SLACK_APP_TOKEN` | No | Slack app token |
 | `CDP_SECRET` | No | Shared secret for CDP endpoint authentication (see [Browser Automation](#optional-browser-automation-cdp)) |
 | `WORKER_URL` | No | Public URL of the worker (required for CDP) |
+| `VIBEIT_API_KEY` | No | API key for querying vibeit.work (see [VibeIt skill](#vibeit-api)) |
 
 ## Security Considerations
 

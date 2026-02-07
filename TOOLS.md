@@ -7,7 +7,7 @@ The bot can reference this to self-check and report missing tools.
 
 | Tool | Command | Purpose | Install Command |
 |------|---------|---------|-----------------|
-| openclaw | `openclaw --version` | OpenClaw CLI | `npm install -g openclaw@2026.2.2-3` |
+| openclaw | `openclaw --version` | OpenClaw CLI | `npm install -g openclaw@2026.2.3-1` |
 | bird | `bird --version` | Twitter/X CLI | `npm install -g @steipete/bird` |
 | node | `node --version` | JavaScript runtime | (in base image) |
 | npm | `npm --version` | Package manager | (in base image) |

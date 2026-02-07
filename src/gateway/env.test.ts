@@ -170,4 +170,10 @@ describe('buildEnvVars', () => {
     expect(result.OPENAI_BASE_URL).toBe('https://gateway.ai.cloudflare.com/v1/123/my-gw/openai');
     expect(result.AI_GATEWAY_BASE_URL).toBe('https://gateway.ai.cloudflare.com/v1/123/my-gw/openai');
   });
+
+  it('includes VIBEIT_API_KEY when set', () => {
+    const env = createMockEnv({ VIBEIT_API_KEY: 'vib_test-key-123' });
+    const result = buildEnvVars(env);
+    expect(result.VIBEIT_API_KEY).toBe('vib_test-key-123');
+  });
 });

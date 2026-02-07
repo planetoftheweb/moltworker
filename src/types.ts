@@ -46,6 +46,8 @@ export interface MoltbotEnv {
   TWITTER_CT0?: string;
   // OpenRouter API key for accessing multiple models
   OPENROUTER_API_KEY?: string;
+  // VibeIt API key for querying vibeit.work
+  VIBEIT_API_KEY?: string;
 }
 
 /**
