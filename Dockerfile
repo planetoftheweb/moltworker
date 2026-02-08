@@ -29,7 +29,7 @@ RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/clawd/skills
 
 # Copy startup and bootstrap scripts - force rebuild
-ARG CACHE_BUST=2026-02-07-publer-wsid-fix-v28
+ARG CACHE_BUST=2026-02-08-openrouter-models-v29
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 COPY scripts/bootstrap.sh /usr/local/bin/bootstrap.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh /usr/local/bin/bootstrap.sh

@@ -47,6 +47,7 @@ echo "X_CONSUMER_KEY: ${X_CONSUMER_KEY:+[SET]}"
 echo "X_CONSUMER_SECRET: ${X_CONSUMER_SECRET:+[SET]}"
 echo "PUBLER_API_KEY: ${PUBLER_API_KEY:+[SET]}"
 echo "PUBLER_WORKSPACE_ID: ${PUBLER_WORKSPACE_ID:+[SET]}"
+echo "OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:+[SET]}"
 echo "============================="
 
 # ============================================================
@@ -70,6 +71,7 @@ export X_CONSUMER_KEY="${X_CONSUMER_KEY}"
 export X_CONSUMER_SECRET="${X_CONSUMER_SECRET}"
 export PUBLER_API_KEY="${PUBLER_API_KEY}"
 export PUBLER_WORKSPACE_ID="${PUBLER_WORKSPACE_ID}"
+export OPENROUTER_API_KEY="${OPENROUTER_API_KEY}"
 ENVEOF
 chmod 600 /tmp/.api-env
 echo "Wrote API secrets to /tmp/.api-env"
@@ -396,6 +398,41 @@ if (isOpenAI) {
 } else {
     // Default to Anthropic without custom base URL (uses built-in catalog)
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+}
+
+// OpenRouter configuration (adds models as additional options, doesn't change default)
+// OpenRouter is a built-in provider in OpenClaw - model refs use openrouter/<provider>/<model>
+// Docs: https://docs.molt.bot/providers/openrouter
+if (process.env.OPENROUTER_API_KEY) {
+    console.log('Configuring OpenRouter provider (additional models)');
+    // Set API key in config env section (how OpenClaw reads it for built-in providers)
+    config.env = config.env || {};
+    config.env.OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+    // Add model aliases for easy switching via the gateway UI
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    // Anthropic via OpenRouter
+    config.agents.defaults.models['openrouter/anthropic/claude-sonnet-4-5'] = { alias: 'OR: Sonnet 4.5' };
+    config.agents.defaults.models['openrouter/anthropic/claude-haiku-4-5'] = { alias: 'OR: Haiku 4.5' };
+    // Google via OpenRouter
+    config.agents.defaults.models['openrouter/google/gemini-2.5-pro'] = { alias: 'OR: Gemini Pro' };
+    config.agents.defaults.models['openrouter/google/gemini-2.5-flash'] = { alias: 'OR: Gemini Flash' };
+    // OpenAI via OpenRouter
+    config.agents.defaults.models['openrouter/openai/gpt-4.1'] = { alias: 'OR: GPT-4.1' };
+    config.agents.defaults.models['openrouter/openai/o3'] = { alias: 'OR: o3' };
+    // Moonshot / Kimi via OpenRouter
+    config.agents.defaults.models['openrouter/moonshotai/kimi-k2.5'] = { alias: 'OR: Kimi K2.5' };
+    config.agents.defaults.models['openrouter/moonshotai/kimi-k2'] = { alias: 'OR: Kimi K2' };
+    // DeepSeek via OpenRouter
+    config.agents.defaults.models['openrouter/deepseek/deepseek-r1'] = { alias: 'OR: DeepSeek R1' };
+    config.agents.defaults.models['openrouter/deepseek/deepseek-chat'] = { alias: 'OR: DeepSeek V3' };
+    // Meta via OpenRouter
+    config.agents.defaults.models['openrouter/meta-llama/llama-4-maverick'] = { alias: 'OR: Llama 4' };
+    // Qwen via OpenRouter
+    config.agents.defaults.models['openrouter/qwen/qwen3-235b-a22b'] = { alias: 'OR: Qwen3 235B' };
+    // xAI via OpenRouter
+    config.agents.defaults.models['openrouter/x-ai/grok-3-beta'] = { alias: 'OR: Grok 3' };
+    console.log('OpenRouter models added (' + Object.keys(config.agents.defaults.models).filter(k => k.startsWith('openrouter/')).length + ' models)');
 }
 
 // Write updated config

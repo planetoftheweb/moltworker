@@ -21,6 +21,10 @@ MOLTBOT_GATEWAY_TOKEN=dev-token-change-in-prod
 # TELEGRAM_BOT_TOKEN=optional
 # DISCORD_BOT_TOKEN=optional
 
+# OpenRouter API key for accessing multiple models (openrouter.ai)
+# Enables models like Gemini, DeepSeek, Llama, GPT via a single API key
+# OPENROUTER_API_KEY=sk-or-...
+
 # CDP (Chrome DevTools Protocol) configuration for browser automation
 # CDP_SECRET=shared-secret-for-cdp-auth
 # WORKER_URL=https://your-worker.example.com
