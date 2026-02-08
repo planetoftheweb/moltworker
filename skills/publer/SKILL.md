@@ -19,6 +19,22 @@ source /tmp/.api-env
 
 Required env vars: `PUBLER_API_KEY`, `PUBLER_WORKSPACE_ID`
 
+## Quick Verification
+
+Run this first to confirm credentials and connectivity work:
+
+```bash
+source /tmp/.api-env && curl -s \
+  -H "Authorization: Bearer-API $PUBLER_API_KEY" \
+  -H "Publer-Workspace-Id: $PUBLER_WORKSPACE_ID" \
+  "https://app.publer.com/api/v1/accounts" | jq '.[0] | {id, provider, name}'
+```
+
+If this fails, check:
+- **401 Unauthorized** — API key is wrong
+- **403 "no access on this workspace"** — Workspace ID is wrong (it should be a hex string like `5fbb491edb2797642ba54ae0`, NOT a key name)
+- **"Could not resolve host"** — Make sure you're using `app.publer.com`, NOT `api.publer.io` (which doesn't exist)
+
 ## Authentication
 
 All requests need these headers:

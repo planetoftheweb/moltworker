@@ -11,6 +11,14 @@ Read tweets, search X, and look up user profiles using the official X API v2 wit
 
 - API secrets available at `/tmp/.api-env` (written by `start-moltbot.sh` on container boot)
 - Contains: `X_BEARER_TOKEN`, `X_CONSUMER_KEY`, `X_CONSUMER_SECRET`
+- For posting (user-context actions): `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` (delivered via Telegram, stored in workspace)
+
+## Quick Verification
+
+```bash
+source /tmp/.api-env && curl -s -H "Authorization: Bearer $X_BEARER_TOKEN" \
+  "https://api.x.com/2/users/me" | jq '.data | {id, name, username}'
+```
 
 ## Authentication
 

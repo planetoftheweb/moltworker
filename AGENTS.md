@@ -221,11 +221,70 @@ See [Moltbot docs](https://docs.molt.bot/gateway/configuration) for full schema.
 3. Update `.dev.vars.example`
 4. Document in README.md secrets table
 
+### Adding a New External API Integration
+
+When integrating a new third-party API (e.g., Publer, YouTube, some new service),
+follow this checklist to avoid the mistakes we've made before.
+
+#### Step 1: Verify the API Details (Before Writing Any Code)
+
+1. **Read the official API docs** — find the actual base URL, auth format, and required headers
+2. **Verify the domain exists** — run `nslookup <domain>` or `dig <domain>` to confirm DNS resolves
+   - Example: `api.publer.io` does NOT exist; the real URL is `app.publer.com/api/v1/`
+3. **Test the API locally first** — run a `curl` command from your own machine before touching the bot
+4. **Note the auth format exactly** — some APIs use `Bearer <token>`, others use `Bearer-API <token>`,
+   or custom header names. Get this from the docs, don't guess.
+
+#### Step 2: Create the Bot Skill
+
+1. Create `skills/<api-name>/SKILL.md` with the correct base URL and auth headers
+2. Include a **smoke test command** at the top so the bot can self-verify:
+   ```bash
+   # Quick test — run this first to verify credentials and connectivity
+   source /tmp/.api-env && curl -s \
+     -H "Authorization: Bearer $API_KEY" \
+     "https://actual-domain.com/api/v1/health-or-simple-endpoint" | jq '.'
+   ```
+3. Use URLs copied from the official docs, never guessed or remembered
+4. Include error handling notes (common HTTP status codes and what they mean)
+
+#### Step 3: Add the Secrets
+
+Choose the right approach based on who needs the secret:
+
 ### Adding a New API Secret (External Service Key)
 
-This is the process for adding a new third-party API key (e.g., X API, YouTube API,
-some new service). There are **5 files to touch** and **2 CLI commands** to run.
+There are **two approaches** for giving the bot access to new API credentials.
+Choose based on whether the **Worker** needs the secret or only the **bot** does.
+
+#### Option A: Direct to Bot via Telegram (Simpler — Bot-Only Secrets)
+
+If the secret is **only used by the bot** (not by the Worker itself), the fastest
+approach is to message the bot directly via Telegram with the credentials. The bot
+stores them in its workspace config, which gets backed up to R2 every 5 minutes and
+survives container restarts.
+
+**When to use:** API keys the bot calls via `curl` in skills (e.g., X Access Token,
+Publer API key, any third-party API the bot uses directly).
+
+**Pros:** Immediate, no deploy needed, no code changes.
+**Cons:** Secrets live in the workspace (backed up to R2, excluded from GitHub backup
+via `.gitignore`). Not available to the Worker itself.
+
+**Steps:**
+1. Message the bot with the credentials via Telegram
+2. Bot stores them in its workspace (e.g., `.env` file, memory, or config)
+3. Bot uses them directly — done
+
+#### Option B: Cloudflare Secrets Pipeline (Worker + Bot Secrets)
+
+If the secret is needed by **the Worker** (e.g., for routing, auth middleware, or
+container startup logic), or you want encrypted-at-rest storage via Cloudflare, use
+the full pipeline. There are **5 files to touch** and **2 CLI commands** to run.
 All steps are required; skipping any one will cause the secret to not reach the bot.
+
+**When to use:** Infrastructure secrets (Anthropic API key, Telegram bot token,
+CF Access credentials), or any secret the Worker code references in `env.*`.
 
 **Why this is complex:** Cloudflare Workers pass secrets to the Worker `env` object.
 The Worker then passes them to the sandbox container via `sandbox.startProcess({ env })`.
@@ -309,10 +368,30 @@ GET /debug/env
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Secret not in container | Used `npx wrangler deploy` instead of `npm run deploy` | Always use `npm run deploy` |
-| Secret in container but not in bot exec sessions | OpenClaw exec sessions don't inherit gateway env | Write to `/tmp/.x-api-env` in `start-moltbot.sh` |
+| Secret in container but not in bot exec sessions | OpenClaw exec sessions don't inherit gateway env | Write to `/tmp/.api-env` in `start-moltbot.sh` |
 | Old secret values persist after redeploy | Stale container process not restarted | Env fingerprint mechanism handles this automatically |
+| Changed a value but old value persists | Fingerprint only tracks key names, not values | Bump `CACHE_BUST` in Dockerfile to force restart |
 | Secret shows as empty after `wrangler secret put` | Non-interactive mode or piping issues | Use interactive prompt (no pipe, no echo) |
+| Secret value is the key name, not the actual value | User pasted key name instead of value | Re-run `wrangler secret put` with correct value |
 | `wrangler tail` exposes secrets in plaintext | Cloudflare's internal `setEnvVars` logging | Be aware; rotate keys after debug sessions |
+| API returns auth error but bot says "DNS issue" | The auth error proves DNS works fine | Check the actual error message, not the bot's diagnosis |
+| "Could not resolve host" for an API domain | The domain doesn't exist (NXDOMAIN) | Verify URL from official docs; `nslookup <domain>` to check |
+| Bot uses wrong API base URL | Guessed/remembered URL instead of reading docs | Always copy URLs from official API documentation |
+
+#### Debugging Methodology
+
+When the bot reports an API integration isn't working, follow this order:
+
+1. **Check the actual error** — get the exact error message and exit code, not the bot's interpretation
+   - curl exit code 6 = DNS failure (domain doesn't exist or can't be resolved)
+   - curl exit code 7 = connection refused (host exists but port/service is down)
+   - HTTP 401/403 = auth issue (DNS and networking are fine)
+   - HTTP 400 = bad request body
+2. **Verify the domain exists** — `nslookup <domain>` from your local machine
+3. **Verify the secret values** — check what was actually stored, not what was intended
+   - Look for the secret value being the key name instead of the actual value
+4. **Test from your local machine** — run the same curl command locally
+5. **Check the skill file** — make sure URLs match the official API docs
 
 ### Debugging
 
