@@ -48,6 +48,7 @@ echo "X_CONSUMER_SECRET: ${X_CONSUMER_SECRET:+[SET]}"
 echo "PUBLER_API_KEY: ${PUBLER_API_KEY:+[SET]}"
 echo "PUBLER_WORKSPACE_ID: ${PUBLER_WORKSPACE_ID:+[SET]}"
 echo "OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:+[SET]}"
+echo "VIBEIT_API_KEY: ${VIBEIT_API_KEY:+[SET]}"
 echo "============================="
 
 # ============================================================
@@ -72,6 +73,7 @@ export X_CONSUMER_SECRET="${X_CONSUMER_SECRET}"
 export PUBLER_API_KEY="${PUBLER_API_KEY}"
 export PUBLER_WORKSPACE_ID="${PUBLER_WORKSPACE_ID}"
 export OPENROUTER_API_KEY="${OPENROUTER_API_KEY}"
+export VIBEIT_API_KEY="${VIBEIT_API_KEY}"
 ENVEOF
 chmod 600 /tmp/.api-env
 echo "Wrote API secrets to /tmp/.api-env"

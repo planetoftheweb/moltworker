@@ -57,7 +57,7 @@ Base URL: `https://vibeit.work/api/v1`
 | Endpoint | Description |
 |----------|-------------|
 | `GET /collections` | List public collections (paginated) |
-| `GET /collections/:slug` | Get collection with its apps and resources |
+| `GET /collections/:idOrSlug` | Get collection with its apps and resources |
 
 #### Platform Meta
 
@@ -94,6 +94,55 @@ Valid `resourceType` values: `tool`, `article`, `video`, `repository`, `other`.
 **Screenshot handling:** If you can scrape the page's `og:image` or `twitter:image` meta tag, pass it as `screenshotUrl`. The site will use it directly. If omitted, the server will automatically try to fetch the og:image or capture a screenshot via Puppeteer.
 
 **Response:** Returns the created resource. If the URL already exists, returns the existing resource with `_duplicate: true`.
+
+#### Collections (Admin API keys)
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /collections` | Create a new collection |
+| `DELETE /collections/:id` | Delete a collection |
+| `POST /collections/:id/items` | Add an app or resource to a collection |
+| `DELETE /collections/:id/items/:itemId` | Remove an item from a collection |
+| `POST /collections/:id/feature` | Toggle featured status on a collection |
+
+**Create collection (POST /collections):**
+
+```json
+{
+  "name": "Best AI Tools This Week",
+  "description": "Curated selection of top AI development tools",
+  "visibility": "public",
+  "color": "#7C3AED",
+  "icon": "sparkles"
+}
+```
+
+Required: `name`. Optional: `description`, `visibility` (default: `public`), `color`, `icon`.
+Valid `visibility` values: `public`, `private`, `link`.
+
+**Add item to collection (POST /collections/:id/items):**
+
+```json
+{
+  "type": "resource",
+  "id": "RESOURCE_ID"
+}
+```
+
+Required: `type` (`app` or `resource`), `id` (the app or resource ID).
+If the item is already in the collection, returns `_duplicate: true`.
+
+**Toggle featured (POST /collections/:id/feature):**
+
+```json
+{
+  "isFeatured": true,
+  "featuredOrder": 1
+}
+```
+
+Required: `isFeatured` (boolean). Optional: `featuredOrder` (number, lower = first).
+Featured collections appear on the homepage and community page.
 
 #### Suggest Resources (Any API key)
 
@@ -211,6 +260,94 @@ curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
 
 The API automatically deduplicates by URL (normalized), so posting a duplicate returns the existing resource with `_duplicate: true` instead of creating a new one.
 
+### Create a curated collection
+
+```bash
+curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Best AI Tools This Week","description":"Top picks from the community","visibility":"public"}' \
+  "https://vibeit.work/api/v1/collections"
+```
+
+### Add items to a collection
+
+```bash
+# Add a resource
+curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"resource","id":"RESOURCE_ID"}' \
+  "https://vibeit.work/api/v1/collections/COLLECTION_ID/items"
+
+# Add an app
+curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"app","id":"APP_ID"}' \
+  "https://vibeit.work/api/v1/collections/COLLECTION_ID/items"
+```
+
+### Feature a collection (shows on homepage)
+
+```bash
+curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"isFeatured":true,"featuredOrder":1}' \
+  "https://vibeit.work/api/v1/collections/COLLECTION_ID/feature"
+```
+
+### Unfeature a collection
+
+```bash
+curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"isFeatured":false}' \
+  "https://vibeit.work/api/v1/collections/COLLECTION_ID/feature"
+```
+
+### Remove an item from a collection
+
+```bash
+curl -s -X DELETE -H "X-API-Key: $VIBEIT_API_KEY" \
+  "https://vibeit.work/api/v1/collections/COLLECTION_ID/items/ITEM_ID"
+```
+
+### Delete a collection
+
+```bash
+curl -s -X DELETE -H "X-API-Key: $VIBEIT_API_KEY" \
+  "https://vibeit.work/api/v1/collections/COLLECTION_ID"
+```
+
+### Auto-curation workflow: build a weekly collection
+
+```bash
+# 1. Get trending resources from the last 7 days
+RESOURCES=$(curl -s -H "X-API-Key: $VIBEIT_API_KEY" \
+  "https://vibeit.work/api/v1/resources/new?days=7&limit=10")
+
+# 2. Create a new collection for this week
+COLLECTION=$(curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Top Picks - Week of Feb 10","description":"This week'"'"'s best vibe coding resources","visibility":"public"}' \
+  "https://vibeit.work/api/v1/collections")
+
+# 3. Extract collection ID
+COLLECTION_ID=$(echo "$COLLECTION" | jq -r '.data.id')
+
+# 4. Add each resource to the collection
+echo "$RESOURCES" | jq -r '.data[].id' | while read RID; do
+  curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"type\":\"resource\",\"id\":\"$RID\"}" \
+    "https://vibeit.work/api/v1/collections/$COLLECTION_ID/items"
+done
+
+# 5. Feature the new collection and unfeature the old one
+curl -s -X POST -H "X-API-Key: $VIBEIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"isFeatured":true,"featuredOrder":1}' \
+  "https://vibeit.work/api/v1/collections/$COLLECTION_ID/feature"
+```
+
 ### Delete a resource
 
 ```bash
@@ -267,6 +404,25 @@ All JSON responses follow this structure:
 | `ownerUsername` | Creator's username |
 | `developmentPlatforms` | Platforms used to build |
 | `aiModels` | AI models used |
+
+### Collection fields
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique collection ID |
+| `name` | Collection name |
+| `slug` | URL slug |
+| `description` | Description text |
+| `visibility` | `public`, `private`, or `link` |
+| `ownerUsername` | Creator's username |
+| `color` | Hex color code |
+| `icon` | Icon name |
+| `appCount` | Number of apps |
+| `memberCount` | Number of members |
+| `isFeatured` | Whether it's featured on the homepage |
+| `featuredOrder` | Display order (lower = first) |
+| `featuredAt` | ISO 8601 timestamp when featured |
+| `createdAt` | ISO 8601 timestamp |
 
 ## Rate Limits
 
