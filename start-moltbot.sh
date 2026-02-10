@@ -272,6 +272,12 @@ config.agents.defaults.model = config.agents.defaults.model || {};
 config.gateway = config.gateway || {};
 config.channels = config.channels || {};
 
+// Always pin workspace to /root/clawd to avoid path drift from stale configs.
+if (config.agents.defaults.workspace && config.agents.defaults.workspace !== '/root/clawd') {
+    console.log('Overriding stale workspace path:', config.agents.defaults.workspace, '-> /root/clawd');
+}
+config.agents.defaults.workspace = '/root/clawd';
+
 // Clean up any broken anthropic provider config from previous runs
 // (older versions didn't include required 'name' field)
 if (config.models?.providers?.anthropic?.models) {
