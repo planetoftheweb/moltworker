@@ -47,6 +47,10 @@ export interface MoltbotEnv {
   X_CONSUMER_SECRET?: string;    // API Key Secret
   X_ACCESS_TOKEN?: string;       // OAuth 1.0a Access Token (for user-context actions like following list)
   X_ACCESS_TOKEN_SECRET?: string; // OAuth 1.0a Access Token Secret
+  // Product Hunt API credentials
+  PRODUCTHUNT_API_KEY?: string;         // Product Hunt App API key
+  PRODUCTHUNT_API_SECRET?: string;      // Product Hunt App API secret
+  PRODUCTHUNT_DEVELOPER_TOKEN?: string; // Product Hunt GraphQL bearer token
   // OpenRouter API key for accessing multiple models
   OPENROUTER_API_KEY?: string;
   // VibeIt API key for querying vibeit.work
