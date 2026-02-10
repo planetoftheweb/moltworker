@@ -92,6 +92,34 @@ echo "Wrote API secrets to /tmp/.api-env"
 mkdir -p "$CONFIG_DIR"
 
 # ============================================================
+# WORKSPACE CANONICALIZATION (HARDENING)
+# ============================================================
+# Keep a single source of truth for bot memory at /root/clawd.
+# If legacy workspace path exists as a real directory, archive it and
+# replace it with a symlink so stale files cannot be read accidentally.
+CANONICAL_WORKSPACE_DIR="/root/clawd"
+LEGACY_WORKSPACE_DIR="/root/.openclaw/workspace"
+mkdir -p "$CANONICAL_WORKSPACE_DIR"
+
+if [ -L "$LEGACY_WORKSPACE_DIR" ]; then
+    CURRENT_TARGET="$(readlink "$LEGACY_WORKSPACE_DIR" 2>/dev/null || true)"
+    if [ "$CURRENT_TARGET" != "$CANONICAL_WORKSPACE_DIR" ]; then
+        echo "Fixing legacy workspace symlink: $LEGACY_WORKSPACE_DIR -> $CANONICAL_WORKSPACE_DIR"
+        rm -f "$LEGACY_WORKSPACE_DIR"
+        ln -s "$CANONICAL_WORKSPACE_DIR" "$LEGACY_WORKSPACE_DIR"
+    fi
+elif [ -d "$LEGACY_WORKSPACE_DIR" ]; then
+    ARCHIVE_DIR="/root/.openclaw/workspace-archive-$(date +%Y%m%d-%H%M%S)"
+    echo "Archiving stale legacy workspace to $ARCHIVE_DIR"
+    mv "$LEGACY_WORKSPACE_DIR" "$ARCHIVE_DIR"
+    ln -s "$CANONICAL_WORKSPACE_DIR" "$LEGACY_WORKSPACE_DIR"
+    echo "Linked $LEGACY_WORKSPACE_DIR -> $CANONICAL_WORKSPACE_DIR"
+else
+    ln -s "$CANONICAL_WORKSPACE_DIR" "$LEGACY_WORKSPACE_DIR"
+    echo "Created workspace symlink: $LEGACY_WORKSPACE_DIR -> $CANONICAL_WORKSPACE_DIR"
+fi
+
+# ============================================================
 # RESTORE FROM R2 BACKUP
 # ============================================================
 # Check if R2 backup exists by looking for openclaw.json (or legacy clawdbot.json)
