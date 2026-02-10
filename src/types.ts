@@ -45,6 +45,8 @@ export interface MoltbotEnv {
   X_BEARER_TOKEN?: string;       // App-only auth (read tweets, search)
   X_CONSUMER_KEY?: string;       // API Key (for user-context actions)
   X_CONSUMER_SECRET?: string;    // API Key Secret
+  X_ACCESS_TOKEN?: string;       // OAuth 1.0a Access Token (for user-context actions like following list)
+  X_ACCESS_TOKEN_SECRET?: string; // OAuth 1.0a Access Token Secret
   // OpenRouter API key for accessing multiple models
   OPENROUTER_API_KEY?: string;
   // VibeIt API key for querying vibeit.work

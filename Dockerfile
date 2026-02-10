@@ -1,13 +1,17 @@
 FROM docker.io/cloudflare/sandbox:0.7.0
 
-# Install Node.js 22 (required by openclaw) and rsync (for R2 backup sync)
-# The base image has Node 20, we need to replace it with Node 22
-# Using direct binary download for reliability
-ENV NODE_VERSION=22.13.1
+# Install system packages (separate layer for faster pushes)
 RUN apt-get update && apt-get install -y xz-utils ca-certificates rsync \
-    && curl -fsSLk https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 (required by openclaw)
+# The base image has Node 20, we need to replace it with Node 22
+# Note: Keeping download and extract in same RUN to avoid giant layer from tarball
+ENV NODE_VERSION=22.13.1
+RUN curl -fsSLk https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
-    && rm /tmp/node.tar.xz \
+    && rm -f /tmp/node.tar.xz \
+    && rm -rf /usr/local/share/doc /usr/local/share/man /usr/local/include/node \
     && node --version \
     && npm --version
 
@@ -19,6 +23,7 @@ RUN npm install -g pnpm
 # Force rebuild: 2026-02-04-openclaw-fresh
 RUN npm cache clean --force \
     && npm install -g openclaw@2026.2.3-1 \
+    && npm cache clean --force \
     && openclaw --version
 
 # Create openclaw directories

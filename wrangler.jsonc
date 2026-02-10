@@ -94,6 +94,8 @@
 	// - X_BEARER_TOKEN: (optional) X/Twitter API v2 Bearer token for reading tweets/searching
 	// - X_CONSUMER_KEY: (optional) X/Twitter API Key (for user-context actions)
 	// - X_CONSUMER_SECRET: (optional) X/Twitter API Key Secret
+	// - X_ACCESS_TOKEN: (optional) X/Twitter OAuth 1.0a Access Token (for user-context actions)
+	// - X_ACCESS_TOKEN_SECRET: (optional) X/Twitter OAuth 1.0a Access Token Secret
 	// - PUBLER_API_KEY: (optional) Publer API key (Business plan, publer.com)
 	// - PUBLER_WORKSPACE_ID: (optional) Publer workspace ID
 	// - OPENROUTER_API_KEY: (optional) OpenRouter API key for multi-model access (openrouter.ai)

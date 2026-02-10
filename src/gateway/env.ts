@@ -31,6 +31,8 @@ export function getEnvFingerprint(env: MoltbotEnv): string {
   if (env.X_BEARER_TOKEN) keys.push('X_BEARER_TOKEN');
   if (env.X_CONSUMER_KEY) keys.push('X_CONSUMER_KEY');
   if (env.X_CONSUMER_SECRET) keys.push('X_CONSUMER_SECRET');
+  if (env.X_ACCESS_TOKEN) keys.push('X_ACCESS_TOKEN');
+  if (env.X_ACCESS_TOKEN_SECRET) keys.push('X_ACCESS_TOKEN_SECRET');
   if (env.OPENROUTER_API_KEY) keys.push('OPENROUTER_API_KEY');
   if (env.VIBEIT_API_KEY) keys.push('VIBEIT_API_KEY');
   if (env.PUBLER_API_KEY) keys.push('PUBLER_API_KEY');
@@ -98,6 +100,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.X_BEARER_TOKEN) envVars.X_BEARER_TOKEN = env.X_BEARER_TOKEN;
   if (env.X_CONSUMER_KEY) envVars.X_CONSUMER_KEY = env.X_CONSUMER_KEY;
   if (env.X_CONSUMER_SECRET) envVars.X_CONSUMER_SECRET = env.X_CONSUMER_SECRET;
+  if (env.X_ACCESS_TOKEN) envVars.X_ACCESS_TOKEN = env.X_ACCESS_TOKEN;
+  if (env.X_ACCESS_TOKEN_SECRET) envVars.X_ACCESS_TOKEN_SECRET = env.X_ACCESS_TOKEN_SECRET;
   if (env.OPENROUTER_API_KEY) envVars.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
   if (env.VIBEIT_API_KEY) envVars.VIBEIT_API_KEY = env.VIBEIT_API_KEY;
   if (env.PUBLER_API_KEY) envVars.PUBLER_API_KEY = env.PUBLER_API_KEY;
