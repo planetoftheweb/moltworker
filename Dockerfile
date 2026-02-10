@@ -22,7 +22,7 @@ RUN npm install -g pnpm
 # Pin to specific version for reproducible builds
 # Force rebuild: 2026-02-04-openclaw-fresh
 RUN npm cache clean --force \
-    && npm install -g openclaw@2026.2.3-1 \
+    && npm install -g openclaw@2026.2.9 \
     && npm cache clean --force \
     && openclaw --version
 
